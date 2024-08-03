@@ -1,3 +1,6 @@
+https://docs.google.com/document/d/129XCwxpDuanK8i2NmHq00VVBzfDTSufX_fPHh8Laxis/edit#heading=h.82tnjwl94wdi
+
+everything below is deprecated, please refer to the google doc above.
 # Medical Data Sharing Platform
  - ~500TB data size
  - Queries - data filering & aggregation
