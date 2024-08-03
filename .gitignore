@@ -1,3 +1,5 @@
 tmp/*
 *.csv
 venv-sparkle
+.notes
+emr-sparkle-windows.pem

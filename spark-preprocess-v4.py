@@ -3,7 +3,6 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, lit, year, month, dayofmonth, unix_timestamp
 from pyspark.sql.types import StructType, StructField, StringType, TimestampType
 import boto3
-import os
 from urllib.parse import urlparse
 
 """
@@ -112,7 +111,9 @@ def main(input_directory, output_directory, processed_directory):
             .parquet(output_directory, mode="append")
 
         # Move processed file to a new location
-        processed_file_path = os.path.join(processed_directory, os.path.basename(current_file))
+        parsed_current_file = urlparse(current_file)
+        file_key = parsed_current_file.path.lstrip('/')
+        processed_file_path = f"{processed_directory}/{file_key.split('/')[-1]}"
         move_s3_file(s3_client, current_file, processed_file_path)
 
     # Stop the Spark session
