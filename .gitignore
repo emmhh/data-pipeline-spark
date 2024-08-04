@@ -4,3 +4,4 @@ venv-sparkle
 .notes
 emr-sparkle-windows.pem
 .ok
+*.pem
