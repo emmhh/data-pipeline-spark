@@ -2,7 +2,9 @@ import boto3
 import botocore
 import os
 from datetime import datetime
-
+"""
+lambda function: emr-no-vpc
+"""
 # Configure the S3 client to use path-style addressing
 s3_client = boto3.client(
     's3',
@@ -136,17 +138,18 @@ def lambda_handler(event, context):
             ],
             Steps=[
                 {
-                    'Name': 'sparkle-v6',
+                    'Name': 'sparkle-v7',
                     'ActionOnFailure': 'CONTINUE',  # TERMINATE_CLUSTER | CANCEL_AND_WAIT | CONTINUE
                     'HadoopJarStep': {
                         'Jar': 'command-runner.jar',
                         'Args': [
                             'spark-submit',
                             '--deploy-mode', 'cluster',
-                            's3://spark-preprocessing-test-0000/spark-apps/sparkle-v6.py',
+                            's3://spark-preprocessing-test-0000/spark-apps/sparkle-v7.py',
                             '--input_directory', 's3://spark-preprocessing-test-0000/test-raw-data/',
-                            '--output_directory', 's3://spark-preprocessing-test-0000/processed-data-4/',
-                            '--processed_directory', 's3://spark-preprocessing-test-0000/old-raw-data/'
+                            '--output_directory', 's3://spark-preprocessing-test-0000/processed-data-5/',
+                            '--processed_directory', 's3://spark-preprocessing-test-0000/old-raw-data/',
+                            '--schema_json_path', 's3://spark-preprocessing-test-0000/schema-json/'
                         ]
                     }
                 }
