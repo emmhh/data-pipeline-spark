@@ -7,10 +7,11 @@ This project aims to design a data pipeline and a data sharing platform for a me
 
 ## Software Architecture
 ![img](System_Architecture.png)
+
 ## Solution Analysis
 1. monthly new data comes in, which is stored in S3 bucket
-2. EMR cluster is triggered by an event to process the data, initiates 2 steps:
-    - Step 1: ETL job to process the data and store it in S3 bucket in parquet format
+2. EMR cluster is triggered by an event to process the data, initiates 2 automated steps:
+    - Step 1: Spark App: ETL job to process the data and store it in S3 bucket in parquet format
     - Step 2: Crawler to crawl the new data and update the schema in Glue Data Catalog (metadata used by Athena for SQL queries on S3 patitioned parquet data)
 3. Athena is used to query the data (Parquet) in S3 bucket, theres two options:
     - Athena query engine: for ad-hoc queries
