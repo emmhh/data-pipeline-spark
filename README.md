@@ -1,9 +1,7 @@
-https://docs.google.com/document/d/129XCwxpDuanK8i2NmHq00VVBzfDTSufX_fPHh8Laxis/edit#heading=h.82tnjwl94wdi
-
 # Data Engineering Project - Data Pipeline + Data Sharing Platform
 
 ## Project Description
-This project aims to design a data pipeline and a data sharing platform for a medical data sharing platform. The platform receives monthly data from hospitals in .csv format, which contains structured data of medical test results. The data size is > 500TB, and new data comes in monthly. The platform needs to support queries for data filtering and aggregation.
+A fun project aims to design a data pipeline and a data sharing platform for a medical data sharing platform. The platform receives monthly data from hospitals in .csv format, which contains structured data of medical test results. The data size is > 500TB, and new data comes in monthly. The platform needs to support queries for data filtering and aggregation.
 
 ## Software Architecture
 ![img](System_Architecture.png)
@@ -60,3 +58,6 @@ This project aims to design a data pipeline and a data sharing platform for a me
 6. optimize MR cluster configurations
 7. Airflow for scheduling and monitoring
 8. Terraform for infrastructure as code
+
+## Full stack NextJS APP:
+Deployed on Amplify, full code in the [repo](https://github.com/emmhh/big-data-sharing-app) (It's private at the moment). It's not the main priority of the project, but it's a good alternative to interact with the data.
