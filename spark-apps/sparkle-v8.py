@@ -1,23 +1,19 @@
 import argparse
 import sys
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, lit, year, month, dayofmonth, unix_timestamp
-from pyspark.sql.types import StructType, StructField, StringType, TimestampType, DoubleType
+from pyspark.sql.functions import col, lit, year, month, dayofmonth
+from pyspark.sql.types import StructType, StructField, StringType, TimestampType, DoubleType, DateType, IntegerType
 import boto3
 from urllib.parse import urlparse
-import json
 from datetime import datetime
+import json
 
 """
 v5 - handles the cases where input folder is empty
 v6 - hanldes .OK file after processing all the files( remove the .OK file)
 v7 - type casting, but REALLY slow, decide to move to predefined schema in v8
+v8 - predefined schema, no type casting; but had the issue of removing the schema of the subclasses
 """
-def delete_ok_file(s3_client, ok_file_path):
-    """Delete the .OK file from S3 after processing."""
-    parsed_ok_file = urlparse(ok_file_path)
-    s3_client.delete_object(Bucket=parsed_ok_file.netloc, Key=parsed_ok_file.path.lstrip('/'))
-    print(f".OK file {ok_file_path} deleted after processing.")
 
 def move_s3_file(s3_client, source, destination):
     """Move file from source to destination in S3."""
@@ -82,82 +78,33 @@ def main(input_directory, output_directory, processed_directory, schema_json_pat
     response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
     print("!!!!", response)
     
-    # # Delete the OK file since we are processing it.
-    # ok_file_path = f"{input_directory}/.OK"
-    # delete_ok_file(s3_client, ok_file_path)
-
     # Filter out any directories and check for actual CSV files
     files = [obj['Key'] for obj in response.get('Contents', []) if obj['Size'] > 0 and obj['Key'].endswith('.csv')]
     if not files:
         print("No CSV files found in the input directory. Exiting.")
         sys.exit(0)
 
-    # Define the schema for the initial metadata rows
-    meta_schema = StructType([
-        StructField("key", StringType(), True),
-        StructField("value", StringType(), True)
-    ])
+    # Define the schema for the data
+    # Assuming there are 100 columns, the first is TimestampType and the rest are DoubleType
+    # Adjust the range in the schema list as needed based on your actual number of columns
+    num_columns = 6039
+    schema = StructType(
+        [StructField("Timestamp", TimestampType(), True)] +
+        [StructField(f"Column{i}", DoubleType(), True) for i in range(1, num_columns)]
+    )
 
-    # Use Spark to read all CSV files from the S3 bucket
-    csv_files_df = spark.read.format("csv").option("header", "false").schema(meta_schema).load(input_directory + "/*.csv")
-    # csv_files_df = spark.read.format("csv").option("header", "false").schema(meta_schema).load([f"s3://{bucket_name}/{file_key}" for file_key in files])
-    # Get distinct file paths from the DataFrame to process each file separately
-    file_paths = csv_files_df.selectExpr("input_file_name() as path").distinct().collect()
+    for file_key in files:
+        file_path = f"s3://{bucket_name}/{file_key}"
+        print(f"Processing file: {file_path}")
 
-    for file_path in file_paths:
-        current_file = file_path['path']
-        print(f"Processing file: {current_file}")
+        full_df = spark.read.csv(file_path, header=False, schema=schema)
 
-        # Read metadata from the CSV file
-        meta_df = spark.read.csv(current_file, schema=meta_schema, header=False).limit(7)
-
-        # Extract metadata
-        metadata = {row.key: row.value for row in meta_df.collect()}
-
-        # Use .get() with a fallback to an empty string if the key is not present
-        file_name = metadata.get('File', '')
-        patient_name = metadata.get('PatientName', '')
-        patient_id = metadata.get('PatientID', '')
-        patient_birth_date = metadata.get('PatientBirthDate', '')
-        test_date = metadata.get('TestDate', '')
-        test_time = metadata.get('TestTime', '')
-
-        # Ensure the value is not None before calling .strip()
-        file_name = file_name.strip() if file_name else ''
-        patient_name = patient_name.strip() if patient_name else ''
-        patient_id = patient_id.strip() if patient_id else ''
-        patient_birth_date = patient_birth_date.strip() if patient_birth_date else ''
-        test_date = test_date.strip() if test_date else ''
-        test_time = test_time.strip() if test_time else ''
-
-        # Read the CSV file and filter out the metadata rows
-        full_df = spark.read.csv(current_file, header=False, inferSchema=True)
-        # Filter out the first 7 rows (metadata) to get the data
-        data_df = full_df.rdd.zipWithIndex().filter(lambda x: x[1] > 7).map(lambda x: x[0]).toDF(full_df.schema)
-
-        # Extract column headers from row 8
-        actual_headers = full_df.rdd.zipWithIndex().filter(lambda x: x[1] == 7).map(lambda x: x[0]).first()
-
-        # Rename columns using the actual headers
-        data_df = data_df.toDF(*actual_headers)
-
-        # Add metadata as columns to the data DataFrame
-        data_df = data_df.withColumn("PatientName", lit(patient_name)) \
-                         .withColumn("PatientID", lit(patient_id)) \
-                         .withColumn("PatientBirthDate", lit(patient_birth_date)) \
-                         .withColumn("TestDate", lit(test_date)) \
-                         .withColumn("TestTime", lit(test_time))
-        
-        # FIXME: Explicitly cast columns that start with 'i' to float
-        for column in data_df.columns:
-            if column.startswith('I'):
-                data_df = data_df.withColumn(column, col(column).cast(DoubleType()))
-        
-        # Multiply by 1e5 to convert back to the original Unix timestamp and cast as a Timestamp
-        data_df = data_df.withColumn(
-            "Timestamp",
-            (col("ClockDateTime") * 1e5).cast(TimestampType())
-        )
+        # Add metadata columns explicitly
+        data_df = full_df.withColumn("PatientName", lit("").cast(StringType())) \
+                         .withColumn("PatientID", lit("").cast(StringType())) \
+                         .withColumn("PatientBirthDate", lit("").cast(DateType())) \
+                         .withColumn("TestDate", lit("").cast(DateType())) \
+                         .withColumn("TestTime", lit("").cast(StringType()))
 
         # Partition by Year, Month, and Day
         data_df = data_df.withColumn("Year", year(col("Timestamp"))) \
@@ -171,7 +118,7 @@ def main(input_directory, output_directory, processed_directory, schema_json_pat
             existing_df = spark.read.parquet(output_directory)
             combined_df = existing_df.union(data_df)
         except Exception as e:
-            print(f"No existing parquet files found for {file_name}, creating new data. ({e})")
+            print(f"No existing parquet files found for {file_path}, creating new data. ({e})")
             combined_df = data_df
 
         # Write the combined DataFrame to Parquet with partitioning by Year, Month, and Day
@@ -180,12 +127,7 @@ def main(input_directory, output_directory, processed_directory, schema_json_pat
             .parquet(output_directory, mode="append")
 
         # Move processed file to a new location
-        parsed_current_file = urlparse(current_file)
-        file_key = parsed_current_file.path.lstrip('/')
-        processed_file_path = f"{processed_directory}/{file_key.split('/')[-1]}"
-        move_s3_file(s3_client, current_file, processed_file_path)
-
-        
+        move_s3_file(s3_client, file_path, f"{processed_directory}/{file_key.split('/')[-1]}")
 
     # Stop the Spark session
     spark.stop()
