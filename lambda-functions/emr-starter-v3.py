@@ -3,12 +3,6 @@ import botocore
 import os
 from datetime import datetime
 
-"""
-works fine one Lambda function without VPC, but fails when VPC is enabled.
-Enabling VPC requires NAT Gateway to allow Lambda to access the internet. And NAT Gateway is not free.
-            - also requires a VPC endpoint for S3 to allow Lambda to access S3
-            - also requires a VPC endpoint for CloudWatch to allow Lambda to write logs
-"""
 # Configure the S3 client to use path-style addressing
 s3_client = boto3.client(
     's3',
@@ -142,14 +136,14 @@ def lambda_handler(event, context):
             ],
             Steps=[
                 {
-                    'Name': 'sparkle-v5',
-                    'ActionOnFailure': 'CANCEL_AND_WAIT',  # TERMINATE_CLUSTER | CANCEL_AND_WAIT | CONTINUE
+                    'Name': 'sparkle-v6',
+                    'ActionOnFailure': 'CONTINUE',  # TERMINATE_CLUSTER | CANCEL_AND_WAIT | CONTINUE
                     'HadoopJarStep': {
                         'Jar': 'command-runner.jar',
                         'Args': [
                             'spark-submit',
                             '--deploy-mode', 'cluster',
-                            's3://spark-preprocessing-test-0000/spark-apps/sparkle-v5.py',
+                            's3://spark-preprocessing-test-0000/spark-apps/sparkle-v6.py',
                             '--input_directory', 's3://spark-preprocessing-test-0000/raw-data/',
                             '--output_directory', 's3://spark-preprocessing-test-0000/processed-data-4/',
                             '--processed_directory', 's3://spark-preprocessing-test-0000/old-raw-data/'

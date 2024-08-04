@@ -46,14 +46,14 @@ def main(input_directory, output_directory, processed_directory):
     response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
     print("!!!!", response)
     
-    # Delete the OK file since we are processing it.
-    ok_file_path = f"{input_directory}/.OK"
-    delete_ok_file(s3_client, ok_file_path)
+    # # Delete the OK file since we are processing it.
+    # ok_file_path = f"{input_directory}/.OK"
+    # delete_ok_file(s3_client, ok_file_path)
 
-    # Filter out any directories and check for actual files
-    files = [obj for obj in response.get('Contents', []) if obj['Size'] > 0]
+    # Filter out any directories and check for actual CSV files
+    files = [obj['Key'] for obj in response.get('Contents', []) if obj['Size'] > 0 and obj['Key'].endswith('.csv')]
     if not files:
-        print("No files found in the input directory. Exiting.")
+        print("No CSV files found in the input directory. Exiting.")
         sys.exit(0)
 
     # Define the schema for the initial metadata rows
@@ -64,7 +64,7 @@ def main(input_directory, output_directory, processed_directory):
 
     # Use Spark to read all CSV files from the S3 bucket
     csv_files_df = spark.read.format("csv").option("header", "false").schema(meta_schema).load(input_directory + "/*.csv")
-
+    # csv_files_df = spark.read.format("csv").option("header", "false").schema(meta_schema).load([f"s3://{bucket_name}/{file_key}" for file_key in files])
     # Get distinct file paths from the DataFrame to process each file separately
     file_paths = csv_files_df.selectExpr("input_file_name() as path").distinct().collect()
 
