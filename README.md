@@ -61,3 +61,9 @@ A fun project aims to design a data pipeline and a data sharing platform for a m
 
 ## Full stack NextJS APP:
 Deployed on Amplify, full code in the [repo](https://github.com/emmhh/big-data-sharing-app) (It's private at the moment). It's not the main priority of the project, but it's a good alternative to interact with the data.
+heres a screenshot of the feature: 
+1. Generate SQL query based on user input
+2. Query the data using API Gateway + Lambda
+3. Display the data in a table format
+4. ~~Download the data in .csv format~~
+![demo](demo-web.png)
